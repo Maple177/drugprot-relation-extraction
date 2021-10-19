@@ -17,7 +17,8 @@ wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1pipr
 tar xzvf data.tgz
 rm data.tgz
 ```
-Below we show example commands for training an ensemble containing 8 bioBERT model using batch size=16, maximum sequence length=256, and early stopping enabled:
+Make sure you have available GPU before training;
+below we show example commands for training an ensemble containing 8 bioBERT model using batch size=16, maximum sequence length=256, and early stopping enabled:
 
 train (e.g. original bioBERT) 
 ```
