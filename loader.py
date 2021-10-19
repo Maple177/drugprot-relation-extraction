@@ -7,7 +7,12 @@ import benepar
 from sklearn.preprocessing import MultiLabelBinarizer
 
 mlb = MultiLabelBinarizer(classes=list(range(14)))
-parser = benepar.Parser("benepar_en3")
+try:
+    parser = benepar.Parser("benepar_en3")
+except:
+    import nltk
+    benepar.download('benepar_en3')
+    parser = benepar.Parser("benepar_en3")
 
 logger = logging.getLogger(__name__)
 
