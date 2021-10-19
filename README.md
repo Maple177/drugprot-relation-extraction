@@ -5,7 +5,8 @@ This repository includes pytorch codes for using domain-specific BERT models, al
 We extracted and pre-processed the original dataset from the official DrugProt task website:
 https://biocreative.bioinformatics.udel.edu/tasks/biocreative-vii/track-1/
 
-The processed data is converted to several .csv files, for convenience, we make these processed files public and it can be downloaded by download.sh 
+The processed data is converted to several .csv files, for convenience, we make these processed files public and downloadable from:
+https://drive.google.com/file/d/1piprXA0QbsKvcloxLUQFkg0rpFXPGr74/view?usp=sharing
 
 ## Train & Make Predictions
 Download codes and data:
