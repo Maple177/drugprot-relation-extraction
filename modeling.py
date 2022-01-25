@@ -4,6 +4,7 @@ import logging
 import os
 import random
 import json
+from tkinter import E
 
 import numpy as np
 import pandas as pd
@@ -120,7 +121,10 @@ def train(args, train_dataloader,dev_dataloader,model,ensemble_id):
     logger.info(f"===number of epochs:{NUM_EPOCHS}; number of steps:{t_total}")
     optimizer = Adam(model.parameters(),lr=args.learning_rate)
 
-    best_model_dir = f"{args.model_type}/ensemble_{ensemble_id}"
+    if args.grid_search:
+        best_model_dir = os.path.join(f"{args.bert_variant}_{args.model_type}",f"bs_{args.batch_size}_lr_{args.learning_rate}",f"ensemble_{ensemble_id}")
+    else:
+        best_model_dir = os.path.join(f"{args.bert_variant}_{args.model_type}",f"ensemble_{ensemble_id}"))
 
     # Train
     logger.info("***** Running training *****")

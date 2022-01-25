@@ -40,6 +40,7 @@ class DataLoader(object):
         
         # shuffle the data for training set
         if not inference and not eval:
+            np.random.seed(args.seed)
             indices = list(range(len(data)))
             np.random.shuffle(indices)
             data = [data[i] for i in indices]
