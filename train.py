@@ -15,7 +15,7 @@ from tqdm import tqdm, trange
 from sklearn.metrics import f1_score
 from opt import get_args
 from loader import DataLoader
-from modeling import (train, evaluate, read_in, load_model, load_tokenizer, set_seed)
+from modeling import (train, evaluate,load_model,set_seed)
 from bert_model import BertForSequenceClassification
 
 transformers.logging.set_verbosity_error()
@@ -41,24 +41,19 @@ def main():
     logger.warning("device: %s, n_gpu: %s",device, args.n_gpu)
 
     if not args.config_name_or_path:
-        config_file_name = f"./config/{args.model_type}.json"
+        config_file_name = f"./config/{args.bert_variant}.json"
         assert os.path.exists(config_file_name), "requested BERT model variant not in the preset. You can place the corresponding config file under the folder /config/"
         args.config_name_or_path = config_file_name
 
-    if args.model_type == "roberta":
-        config = RobertaConfig.from_pretrained(args.config_name_or_path,
-                                               num_labels=args.num_labels)
-    else:
-        config = BertConfig.from_pretrained(args.config_name_or_path,
-                                            num_labels=args.num_labels)
-    
-    tokenizer = load_tokenizer(args.pretrained_model_path,args.model_type)
+    config = BertConfig.from_pretrained(args.config_name_or_path,
+                                        num_labels=args.num_labels)
 
-    output_dir = os.path.join(args.finetuned_model_path,args.model_type,"training_record")
+    output_dir = os.path.join(args.finetuned_model_path,args.bert_variant,"training_record")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    train_dataloader, dev_dataloader = read_in(args,tokenizer)
+    train_dataloader = DataLoader(args,"train")
+    dev_dataloader = DataLoader(args,"dev",eval=True)
 
     all_dev_loss, all_dev_score, all_best_epochs = [], [], []
     # Evaluate the best model on Test set
@@ -67,11 +62,11 @@ def main():
         torch.cuda.empty_cache()
         
         set_seed(args,ne)
-        model = load_model(args.pretrained_model_path,args.model_type,config=config,output_loading_info=False,
-                           with_const=args.with_const,num_syntax_layers=args.num_syntax_layers)
+        model = load_model(args.pretrained_model_path,args.bert_variant,config=config,output_loading_info=False,
+                           model_type=args.model_type,num_syntax_layers=args.num_syntax_layers)
         model.to(args.device)
 
-        nb_epochs, loss_record, score_record, best_epoch = train(args,train_dataloader,dev_dataloader,model,config,ne+1)
+        nb_epochs, loss_record, score_record, best_epoch = train(args,train_dataloader,dev_dataloader,model,ne+1)
         
         all_best_epochs.append(best_epoch)
         all_dev_loss.append(loss_record+[float("NaN")]*(nb_epochs-len(loss_record)))

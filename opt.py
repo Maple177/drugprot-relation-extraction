@@ -12,7 +12,7 @@ def get_args():
                          help="Ratio of validation set for the train-validation-split")
      parser.add_argument("--force_cpu",action="store_true",
                          help="if set, the script will be run WITHOUT GPU.")
-     parser.add_argument("--model_type",default="biobert",type=str,
+     parser.add_argument("--bert_variant",default="biobert",type=str,
                          help="abbreviation of model to use")
      parser.add_argument("--pretrained_model_path", default=None, type=str,
                          help="Path to pre-trained model, if no pre-trained model the model that corresponds to the model type "
@@ -27,22 +27,17 @@ def get_args():
                          help="if set, relation type will not be considered.")
      parser.add_argument("--num_labels",type=int,default=2,
                          help="number of relations (no_relation COUNTED)")
-     parser.add_argument("--normalise",type=str,default="target",
-                         help="degree of normalisation")
      parser.add_argument("--debug",action="store_true",
                          help="use only first 100 examples to test the whole script.")
      parser.add_argument("--num_debug",type=int,default=100,
                          help="first num_debug examples will be used for a fast test.")
      parser.add_argument("--seed",type=int,default=42,
                          help="random seed for ensure reproducibility")
-     parser.add_argument("--no_randomness",action="store_true",
-                         help="if set, outputs of network are fixed.")
      parser.add_argument("--batch_size", default=32, type=int,
                          help="Batch size per GPU/CPU for training.")
 
      group = parser.add_argument_group('--syntax_options')
-     group.add_argument('--with_const',action="store_true",help="add constituent late-fusion network "
-                                                                "on top of the original BERT network.")
+     parser.add_argument("--model_type",type=str,required=True,help="type of model; MUST BE in {no_syntax, chunking, const_tree}.")
      group.add_argument("--num_syntax_layers",type=int,default=2,help="number of BERT layers to add to "
                                                                       "integrate the syntactic information.")     
 

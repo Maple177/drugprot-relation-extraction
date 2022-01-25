@@ -11,8 +11,7 @@ import torch
 from sklearn.preprocessing import OneHotEncoder
 
 from torch.optim import Adam
-from transformers import BertTokenizer, RobertaTokenizer
-from bert_model import BertForSequenceClassification, RobertaForSequenceClassification
+from bert_model import BertForSequenceClassification
 
 from tqdm import tqdm, trange
 from sklearn.metrics import f1_score
@@ -22,8 +21,7 @@ from loader import DataLoader
 
 model_download_shortcuts = {"bert":"bert-base-uncased",
                             "biobert":"dmis-lab/biobert-base-cased-v1.1",
-                            "scibert":"allenai/scibert_scivocab_uncased",
-                            "roberta":"roberta-base"}
+                            "scibert":"allenai/scibert_scivocab_uncased"}
 
 soft_max = torch.nn.Softmax(-1)
 sigmoid = torch.nn.Sigmoid()
@@ -31,61 +29,17 @@ oh = OneHotEncoder(categories=list(range(14)))
 
 logger = logging.getLogger(__name__)
 
-def read_in(args,tokenizer,inference=False):
-    df_train = pd.read_csv(args.data_dir)
-    if args.debug:
-        df_train = df_train.iloc[:args.num_debug]
-    if inference:
-        return DataLoader(args,df_train,tokenizer,"corpus for testing",eval=True,inference=True)
-    if args.dev_data_dir is None:
-        # no validation data provided, use a random split of training data for validation.
-        indices = list(range(len(df_train)))
-        split = int(len(indices) * args.train_dev_split)
-        np.random.shuffle(indices)
-        df_dev = df_train.iloc[indices[:split]]
-        df_train = df_train.iloc[indices[split:]]
-    else:
-        df_dev = pd.read_csv(args.dev_data_dir)
-        if args.debug:
-            df_dev = df_dev.iloc[:args.num_debug]
-    train_dataloader = DataLoader(args,df_train,tokenizer,"training set")
-    dev_dataloader = DataLoader(args,df_dev,tokenizer,"validation set",eval=True)
-    return train_dataloader, dev_dataloader
-
 # load models 
-def load_model(model_path,model_type,**kwargs):
+def load_model(model_path,bert_variant,**kwargs):
     path = os.path.join(model_path,"model")
     if os.path.exists(model_path):
-        if model_type == "roberta":
-            bert_model = RobertaForSequenceClassification.from_pretrained(path,**kwargs)
-        else:
-            bert_model = BertForSequenceClassification.from_pretrained(path,**kwargs)
+        bert_model = BertForSequenceClassification.from_pretrained(path,**kwargs)
     else:
-        if model_type == "roberta":
-            bert_model = RobertaForSequenceClassification.from_pretrained(model_download_shortcuts[model_type],**kwargs)
-            bert_model.save_pretrained(path)
-        else:
-            bert_model = BertForSequenceClassification.from_pretrained(model_download_shortcuts[model_type],**kwargs)
-            bert_model.save_pretrained(path)
+        bert_model = BertForSequenceClassification.from_pretrained(model_download_shortcuts[bert_variant],**kwargs)
+        bert_model.save_pretrained(path)
     return bert_model
 
-def load_tokenizer(model_path,model_type):
-    path = os.path.join(model_path,"tokenizer")
-    if not os.path.exists(model_path):
-        if model_type == "roberta":
-            bert_tokenizer = RobertaTokenizer.from_pretrained(model_download_shortcuts[model_type])
-            bert_tokenizer.save_pretrained(path)
-        else:
-            bert_tokenizer = BertTokenizer.from_pretrained(model_download_shortcuts[model_type])
-            bert_tokenizer.save_pretrained(path)
-    else:
-        if model_type == "roberta":
-            bert_tokenizer = RobertaTokenizer.from_pretrained(path)
-        else:
-            bert_tokenizer = BertTokenizer.from_pretrained(path)
-    return bert_tokenizer
-
-def vote(args,preds):
+def vote(args,preds,id2label):
     logger.info("making final prediction: voting...")
     rng = np.random.RandomState(args.seed)
     vote_preds = []
@@ -115,7 +69,7 @@ def set_seed(args,ensemble_id):
     if args.n_gpu > 0:
         torch.cuda.manual_seed_all(seed)
 
-def evaluate(dataloader,model,predict_only=False):
+def evaluate(dataloader,model,inference=False):
     eval_loss = 0.0
     nb_eval_steps = 0
     full_preds = []
@@ -124,12 +78,12 @@ def evaluate(dataloader,model,predict_only=False):
 
     for batch in dataloader:
         with torch.no_grad():
-            if predict_only:
+            if inference:
                 logits = model(**batch)[0]
             else:
                 loss, logits = model(**batch)[:2]
 
-            if not predict_only:
+            if not inference:
                preds = logits.detach().cpu().numpy()
                preds = one_hot(np.argmax(preds,axis=1))
                eval_loss += loss.item()
@@ -142,14 +96,14 @@ def evaluate(dataloader,model,predict_only=False):
     
     full_preds = np.concatenate(full_preds)
     
-    if not predict_only:
+    if not inference:
         eval_loss = eval_loss / nb_eval_steps
         full_golds = np.concatenate(full_golds)
         return eval_loss, f1_score(full_golds,full_preds,average="micro",labels=list(range(1,14)))
     else:
         return full_preds
     
-def train(args, train_dataloader, dev_dataloader, model, config, ensemble_id, loading_info=None):
+def train(args, train_dataloader,dev_dataloader,model,ensemble_id):
     """ Train the model """
     if not args.early_stopping:
         NUM_EPOCHS = args.num_train_epochs
