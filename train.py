@@ -37,18 +37,20 @@ def main():
     args.device = device
 
     # Setup logging
-    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',datefmt='%m/%d/%Y %H:%S',level=logging.INFO,filename="training_log",filemode='w')
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',datefmt='%m/%d/%Y %H:%S',level=logging.INFO,filename=f"training_log_{args.run_id}",filemode='w')
     logger.warning("device: %s, n_gpu: %s",device, args.n_gpu)
+    logger.info(f"learning rate: {args.learning_rate}")
 
     if not args.config_name_or_path:
-        config_file_name = f"./config/{args.bert_variant}.json"
+        config_file_name = f"./drugprot-relation-extraction/config/{args.bert_variant}.json"
         assert os.path.exists(config_file_name), "requested BERT model variant not in the preset. You can place the corresponding config file under the folder /config/"
         args.config_name_or_path = config_file_name
 
     config = BertConfig.from_pretrained(args.config_name_or_path,
                                         num_labels=args.num_labels)
 
-    output_dir = os.path.join(args.finetuned_model_path,args.bert_variant,"training_record")
+    output_dir = os.path.join(args.finetuned_model_path,f"{args.bert_variant}_{args.model_type}",f"bs_{args.batch_size}_lr_{args.learning_rate}_num_extra_layers_{args.num_syntax_layers}",
+                                                         "training_record")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 

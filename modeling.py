@@ -122,9 +122,12 @@ def train(args, train_dataloader,dev_dataloader,model,ensemble_id):
     optimizer = Adam(model.parameters(),lr=args.learning_rate)
 
     if args.grid_search:
-        best_model_dir = os.path.join(f"{args.bert_variant}_{args.model_type}",f"bs_{args.batch_size}_lr_{args.learning_rate}",f"ensemble_{ensemble_id}")
+        best_model_dir = os.path.join(f"{args.bert_variant}_{args.model_type}",f"bs_{args.batch_size}_lr_{args.learning_rate}_num_extra_layers_{args.num_syntax_layers}",f"ensemble_{ensemble_id}")
     else:
-        best_model_dir = os.path.join(f"{args.bert_variant}_{args.model_type}",f"ensemble_{ensemble_id}"))
+        best_model_dir = os.path.join(f"{args.bert_variant}_{args.model_type}",f"ensemble_{ensemble_id}")
+    output_dir = os.path.join(args.finetuned_model_path,best_model_dir)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     # Train
     logger.info("***** Running training *****")
@@ -178,9 +181,6 @@ def train(args, train_dataloader,dev_dataloader,model,ensemble_id):
             best_epoch = epoch
             
             # save model
-            output_dir = os.path.join(args.finetuned_model_path,best_model_dir)
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
             model.save_pretrained(output_dir)
             torch.save(args, os.path.join(output_dir, 'training_args.bin'))
             logger.info("new best model! saved.")
@@ -189,10 +189,7 @@ def train(args, train_dataloader,dev_dataloader,model,ensemble_id):
             max_score = dev_score
             best_epoch = epoch
 
-            # save model
-            output_dir = os.path.join(args.finetuned_model_path,best_model_dir)
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
+            # save model 
             model.save_pretrained(output_dir)
             torch.save(args,os.path.join(output_dir,"training_args.bin"))
             logger.info("new best model! saved.")

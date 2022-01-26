@@ -35,6 +35,8 @@ def get_args():
                          help="random seed for ensure reproducibility")
      parser.add_argument("--batch_size", default=32, type=int,
                          help="Batch size per GPU/CPU for training.")
+     parser.add_argument("--grid_search",action="store_true",help="if set, results will be stored using a different format.")    
+     parser.add_argument("--run_id",type=int,help="for development use.")
 
      group = parser.add_argument_group('--syntax_options')
      parser.add_argument("--model_type",type=str,required=True,help="type of model; MUST BE in {no_syntax, chunking, const_tree}.")

@@ -58,7 +58,7 @@ class BertForSequenceClassification(BertPreTrainedModel):
 
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        if model_type == "chunking":
+        if model_type == "with_chunking":
             self.extra_bert = BertEncoder(config,num_syntax_layers)
         self.pooler = BertPooler(config) 
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
@@ -95,7 +95,7 @@ class BertForSequenceClassification(BertPreTrainedModel):
 
         if self.model_type == "no_syntax":
             pooled_output = outputs[1]
-        elif self.model_type == "chunking":
+        elif self.model_type == "with_chunking":
             device = next(self.parameters()).device
             hidden_states = outputs[0]
             bs, L, _ = hidden_states.shape

@@ -37,7 +37,9 @@ class DataLoader(object):
                     data = data["wp_ids"]
                 else:
                     data = list(zip(data["wp_ids"],data["const_end_markers"]))
-        
+       
+        if args.debug:
+            data = data[:args.num_debug] 
         # shuffle the data for training set
         if not inference and not eval:
             np.random.seed(args.seed)
@@ -61,18 +63,18 @@ class DataLoader(object):
 
         if self.model_type == "no_syntax":
             if self.inference:
-                batch_wp_ids = self._padding(self.device,batch)
+                batch_wp_ids, batch_masks = self._padding(batch)
             else:
                 batch_wp_ids, batch_labels = list(zip(*batch))
-                batch_wp_ids = self._padding(self.device,batch_wp_ids)
-            encoding = {"input_ids":batch_wp_ids}
+                batch_wp_ids, batch_masks = self._padding(batch_wp_ids)
+            encoding = {"input_ids":batch_wp_ids,"attention_mask":batch_masks}
         elif self.model_type == "with_chunking":
             if self.inference:
                 batch_wp_ids, batch_const_end_markers = list(zip(*batch))
             else:
                 batch_wp_ids, batch_const_end_markers, batch_labels = list(zip(*batch))
-            batch_wp_ids = self._padding(self.device,batch_wp_ids)
-            encoding = {"input_ids":batch_wp_ids,"wp2const":batch_const_end_markers}
+            batch_wp_ids, batch_masks = self._padding(batch_wp_ids)
+            encoding = {"input_ids":batch_wp_ids,"attention_mask":batch_masks,"wp2const":batch_const_end_markers}
         else:
             if self.inference:
                 batch_wp_ids, batch_subtree_masks = list(zip(*batch))
@@ -94,7 +96,8 @@ class DataLoader(object):
         max_len = max(map(len,wp_ids))
         wp_ids = torch.Tensor([line + (max_len-len(line)) * [0] for line in wp_ids]).int().to(self.device)
         if len(masks) == 0:
-            return wp_ids
+            padded_masks = torch.Tensor([len(line) * [1] + (max_len-len(line)) * [0] for line in wp_ids]).int().to(self.device)
+            return wp_ids, padded_masks
         padded_masks = []
         for m in masks:
             tmp_mask = np.zeros((max_len,max_len))
