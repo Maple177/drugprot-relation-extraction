@@ -49,6 +49,8 @@ class DataLoader(object):
 
         data = [data[i:i+args.batch_size] for i in range(0,len(data),args.batch_size)]
         self.data = data
+        with open("./loaded_train_data.pkl","wb") as f:
+            pickle.dump(data,f)
         logger.info(f"{tag}: {len(data)} batches generated.")
 
     def __len__(self):

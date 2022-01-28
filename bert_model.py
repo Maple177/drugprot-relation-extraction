@@ -103,6 +103,7 @@ class BertForSequenceClassification(BertPreTrainedModel):
             const_masks = torch.zeros(bs,L,device=device)
             const_states = torch.zeros_like(hidden_states)
             for ix, hs, ma in zip(range(bs),hidden_states,wp2const):
+                #print(ma)
                 start = 0
                 index = 0
                 for end in ma:
@@ -114,10 +115,12 @@ class BertForSequenceClassification(BertPreTrainedModel):
             #const_masks = self.get_extended_attention_mask(const_masks,(bs,L),device)
             const_masks = const_masks[:,None,None,:]
             #print(const_states.shape,const_masks.shape)
+            #print('-'*10)
             #const_masks.to(device)
             #print(device,const_states.device,const_masks.device)
             const_hidden_states = self.extra_bert(const_states,attention_mask=const_masks)[0]
             pooled_output = self.pooler(const_hidden_states)
+            #print(const_hidden_states)
           
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
