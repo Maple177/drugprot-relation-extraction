@@ -20,6 +20,7 @@ from loader import DataLoader
 from modeling import (evaluate, read_in, load_tokenizer, set_seed, vote)
 
 logger = logging.getLogger(__name__)
+lr_to_str = {1e-5:"1e-05",2e-5:"2e-05",5e-5:"5e-05",1e-4:"0.0001",} # sometimes under different systems 1e-4 is represented in different ways. 
 
 def main():
     start_time = time.time()
@@ -50,28 +51,56 @@ def main():
     config = BertConfig.from_pretrained(args.config_name_or_path,
                                             num_labels=args.num_labels)
 
-    model_dir = os.path.join(args.finetuned_model_path,args.bert_variant)
-    test_dataloader = DataLoader(args,"test",inference=True)
+    if args.dev:
+        dataloader = DataLoader(args,"dev",eval=True,inference=False)
+    else:
+        dataloader = DataLoader(args,"test",inference=True)
     
-    result = defaultdict(list)
+    ensemble_preds = {}
+    ensemble_scores = {}
+
+    output_dir = os.path.join(args.finetuned_model_path,f"{args.bert_variant}_{args.model_type}", 
+                              f"bs_{args.batch_size}_lr_{lr_to_str[args.learning_rate]}_num_extra_layers_{args.num_syntax_layers}")
     # Evaluate the best model on Test set
-    for ne in range(args.num_ensemble):
+    for ne in range(1,args.num_ensemble+1):
         torch.cuda.empty_cache()
         
         set_seed(args,ne)
 
-        ensemble_model_path = os.path.join(args.finetuned_model_path,f"{args.bert_variant}/ensemble_{ne+1}")
+        ensemble_model_path = os.path.join(output_dir,f"ensemble_{ne}")
+        assert os.path.exists(ensemble_model_path), "the selected model is untrained or trained incompletely."
         model = BertForSequenceClassification.from_pretrained(ensemble_model_path,config=config,output_loading_info=False,
-                                                                  model_type=args.model_type,num_syntax_layers=args.num_syntax_layers)
+                                                              model_type=args.model_type,num_syntax_layers=args.num_syntax_layers)
         model.to(args.device) 
 
-        pred = evaluate(test_dataloader,model,inference=True)
-        result[ne+1].append(pred)
+        if args.dev:
+            _, tmp_score, tmp_pred = evaluate(dataloader,model)
+            ensemble_scores[ne] = tmp_score
+        else:
+            tmp_pred = evaluate(dataloader,model,inference=True)
+        ensemble_preds[ne] = tmp_pred
 
-    for ne in range(1,args.num_ensemble+1):
-        probs = np.concatenate(result[ne])
-        df = pd.DataFrame({l:probs[:,l] for l in list(range(14))})
-        df.to_csv(os.path.join(args.output_dir,f"probas_ensemble_{ne}.csv"),index=False)
+    if args.dev:
+        dest_dir = os.path.join(output_dir,"dev")
+        if not os.path.exists(dest_dir):
+            os.makedirs(dest_dir)
+        df_score = pd.DataFrame(ensemble_scores)
+        df_score.to_csv(os.path.join(dest_dir,"dev_scores.csv"),index=False)
+        dev_preds = []
+        for ne in range(1,args.num_ensemble+1):
+            dev_preds.append(np.argmax(ensemble_preds[ne],1))
+        dev_preds = np.concatenate(dev_preds)
+        np.save(open(os.path.join(dest_dir,
+                                  f"preds_{args.bert_variant}_{args.model_type}_{args.batch_size}_{args.learning_rate}_{args.num_syntax_layers}.npy"),"wb"),
+                                  dev_preds)
+    else:
+        dest_dir = os.path.join(output_dir,"test")
+        if not os.path.exists(dest_dir):
+            os.makedirs(dest_dir)
+        for ne in range(1,args.num_ensemble+1):
+            probs = ensemble_preds[ne]
+            df = pd.DataFrame({l:probs[:,l] for l in list(range(14))})
+            df.to_csv(os.path.join(dest_dir,f"probas_ensemble_{ne}.csv"),index=False)
     
     end_time = time.time()
     logger.info(f"time consumed (prediction):{(end_time-start_time):.3f} s.")
