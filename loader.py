@@ -17,7 +17,7 @@ class DataLoader(object):
         self.device = args.device
         self.model_type = args.model_type
 
-        assert self.model_type in ["no_syntax","with_chunking","with_const_tree"], "UNAVAILABLE model type. Possible options: no_syntax / with_chunking / with_const_tree"
+        assert self.model_type in ["no_syntax","no_syntax_extra","with_chunking","with_const_tree"], "UNAVAILABLE model type. Possible options: no_syntax / with_chunking / with_const_tree"
 
         if self.model_type == "with_const_tree":
             data = pickle.load(open(os.path.join(args.data_dir,"const_tree",f"{tag}.pkl"),"rb"))
@@ -28,12 +28,12 @@ class DataLoader(object):
         else:
             data = pickle.load(open(os.path.join(args.data_dir,"chunking",f"{tag}.pkl"),"rb"))
             if not inference:
-                if self.model_type == "no_syntax":
+                if self.model_type in ["no_syntax","no_syntax_extra"]:
                     data = list(zip(data["wp_ids"],data["labels"]))
                 else:
                     data = list(zip(data["wp_ids"],data["const_end_markers"],data["labels"]))
             else:
-                if self.model_type == "no_syntax":
+                if self.model_type in ["no_syntax","no_syntax_extra"]:
                     data = data["wp_ids"]
                 else:
                     data = list(zip(data["wp_ids"],data["const_end_markers"]))
@@ -63,7 +63,7 @@ class DataLoader(object):
             raise IndexError
         batch = self.data[key]
 
-        if self.model_type == "no_syntax":
+        if self.model_type in ["no_syntax","no_syntax_extra"]:
             if self.inference:
                 batch_wp_ids, batch_masks = self._padding(batch)
             else:

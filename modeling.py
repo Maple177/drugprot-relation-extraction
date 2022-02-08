@@ -15,7 +15,7 @@ from torch.optim import Adam
 from bert_model import BertForSequenceClassification
 
 from tqdm import tqdm, trange
-from sklearn.metrics import f1_score
+from sklearn.metrics import precision_score, recall_score, f1_score
 from opt import get_args
 from loader import DataLoader
 
@@ -100,7 +100,10 @@ def evaluate(dataloader,model,inference=False):
     if not inference:
         eval_loss = eval_loss / nb_eval_steps
         full_golds = np.concatenate(full_golds)
-        return eval_loss, f1_score(full_golds,full_preds,average="micro",labels=list(range(1,14)))
+        return eval_loss, f1_score(full_golds,full_preds,average="micro",labels=list(range(1,14))), \
+                          precision_score(full_golds,full_preds,average="micro",labels=list(range(1,14))), \
+                          recall_score(full_golds,full_preds,average="micro",labels=list(range(1,14))), \
+                          full_preds
     else:
         return full_preds
     
@@ -170,7 +173,7 @@ def train(args, train_dataloader,dev_dataloader,model,ensemble_id):
                 logger.info(f"training loss = {(tr_loss - logging_loss)/args.logging_steps} | global step = {global_step}")
                 logging_loss = tr_loss
 
-        dev_loss, dev_score = evaluate(dev_dataloader,model)
+        dev_loss, dev_score, _, _, _ = evaluate(dev_dataloader,model)
         dev_loss_record.append(dev_loss)
         dev_score_record.append(dev_score)
 

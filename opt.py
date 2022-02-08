@@ -39,7 +39,7 @@ def get_args():
      parser.add_argument("--run_id",type=int,help="for development use.")
 
      group = parser.add_argument_group('--syntax_options')
-     parser.add_argument("--model_type",type=str,required=True,help="type of model; MUST BE in {no_syntax, chunking, const_tree}.")
+     parser.add_argument("--model_type",type=str,required=True,help="type of model; MUST BE in {no_syntax, no_syntax_extra,chunking, const_tree}.")
      group.add_argument("--num_syntax_layers",type=int,default=2,help="number of BERT layers to add to "
                                                                       "integrate the syntactic information.")     
 

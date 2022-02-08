@@ -17,6 +17,7 @@ class BertPooler(nn.Module):
     def forward(self, hidden_states):
         # We "pool" the model by simply taking the hidden state corresponding
         # to the first token.
+        #print(hidden_states.shape)
         first_token_tensor = hidden_states[:, 0]
         pooled_output = self.dense(first_token_tensor)
         pooled_output = self.activation(pooled_output)
@@ -58,7 +59,7 @@ class BertForSequenceClassification(BertPreTrainedModel):
 
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        if model_type == "with_chunking":
+        if model_type in ["no_syntax_extra","with_chunking"]:
             self.extra_bert = BertEncoder(config,num_syntax_layers)
         self.pooler = BertPooler(config) 
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
@@ -95,6 +96,10 @@ class BertForSequenceClassification(BertPreTrainedModel):
 
         if self.model_type == "no_syntax":
             pooled_output = outputs[1]
+        elif self.model_type == "no_syntax_extra":
+            hidden_states = outputs[0]
+            hidden_states = self.extra_bert(hidden_states,attention_mask=attention_mask[:,None,None,:])[0]
+            pooled_output = self.pooler(hidden_states)
         elif self.model_type == "with_chunking":
             device = next(self.parameters()).device
             hidden_states = outputs[0]
