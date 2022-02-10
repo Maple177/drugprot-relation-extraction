@@ -8,6 +8,17 @@ from transformers.models.roberta.modeling_roberta import (RobertaPreTrainedModel
 logger = logging.getLogger(__name__)
 class_weights = [1.358,45.340,98.397,2232.586,4980.385,66.610,28.814,48.717,46.985,12.023,73.158,70.375,32.324,2697.708] 
 
+class HighwayGateLayer(nn.Module):
+    def __init__(self, in_out_size, bias=True):
+        super(HighwayGateLayer, self).__init__()
+        self.transform = nn.Linear(in_out_size, in_out_size, bias=bias)
+
+    def forward(self,v,z):
+        # from sachan "do syntax trees help ...": equation (5)
+        # v at the output of BERT, z at the output of syntax-GNN
+        g = torch.sigmoid(self.transform(v))
+        return g * v + (1 - g) * z
+
 class BertPooler(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -59,8 +70,13 @@ class BertForSequenceClassification(BertPreTrainedModel):
 
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
+
+        assert self.model_type in ["no_syntax","no_syntax_extra","with_chunking","with_const_tree"], "UNAVAILABLE model type." + \
+                                   "Possible options: no_syntax / with_chunking / with_const_tree"
         if model_type in ["no_syntax_extra","with_chunking"]:
             self.extra_bert = BertEncoder(config,num_syntax_layers)
+        if model_type in ["late fusion"]:
+            self.highway = HighwayGateLayer(config.hidden_size)
         self.pooler = BertPooler(config) 
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
         self.loss_fct = BCEWithLogitsLoss(pos_weight=torch.Tensor(class_weights))       
@@ -94,7 +110,7 @@ class BertForSequenceClassification(BertPreTrainedModel):
             output_hidden_states=output_hidden_states,
         )
 
-        if self.model_type == "no_syntax":
+        if self.model_type in ["no_syntax","with_const_tree"]:
             pooled_output = outputs[1]
         elif self.model_type == "no_syntax_extra":
             hidden_states = outputs[0]

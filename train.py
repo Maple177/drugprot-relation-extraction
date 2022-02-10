@@ -22,6 +22,7 @@ transformers.logging.set_verbosity_error()
 logger = logging.getLogger(__name__)
 
 os.environ["MKL_DEBUG_CPU_TYPE"] = '5'
+NUM_CONST_TAGS = 24
 
 def main():
     start_time = time.time()
@@ -66,6 +67,10 @@ def main():
         set_seed(args,ne)
         model = load_model(args.pretrained_model_path,args.bert_variant,config=config,output_loading_info=False,
                            model_type=args.model_type,num_syntax_layers=args.num_syntax_layers)
+
+        if args.model_type == "with_const_tree":
+            model.resize_token_embeddings(NUM_CONST_TAGS)
+            assert model.bert.embeddings.word_embeddings.weight.shape[0] == 29020, "MODEL_TYPE set to with_const_tree, but embedding layer not resized."
         model.to(args.device)
 
         nb_epochs, loss_record, score_record, best_epoch = train(args,train_dataloader,dev_dataloader,model,ne+1)

@@ -67,6 +67,10 @@ def main():
         assert os.path.exists(ensemble_model_path), "the selected model is untrained or trained incompletely."
         model = BertForSequenceClassification.from_pretrained(ensemble_model_path,config=config,output_loading_info=False,
                                                               model_type=args.model_type,num_syntax_layers=args.num_syntax_layers)
+        if args.model_type == "with_const_tree":
+            if model.bert.embeddings.word_embeddings.weight.shape[0] != 29020:
+                logger.info(f"model type set to WITH_CONST_TREE, but BERT embedding layer not resized: {model.bert.embeddings.word_embeddings.weight.shape}")
+            assert model.bert.embeddings.word_embeddings.weight.shape[0] == 29020, "MODEL_TYPE set to with_const_tree, but embedding layer not resized."
         model.to(args.device) 
 
         _, tmp_f, tmp_p, tmp_r, tmp_pred = evaluate(dev_dataloader,model)

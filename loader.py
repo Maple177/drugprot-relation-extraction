@@ -77,7 +77,7 @@ class DataLoader(object):
                 batch_wp_ids, batch_const_end_markers, batch_labels = list(zip(*batch))
             batch_wp_ids, batch_masks = self._padding(batch_wp_ids)
             encoding = {"input_ids":batch_wp_ids,"attention_mask":batch_masks,"wp2const":batch_const_end_markers}
-        else:
+        elif self.model_type == "with_const_tree":
             if self.inference:
                 batch_wp_ids, batch_subtree_masks = list(zip(*batch))
             else:
@@ -102,9 +102,14 @@ class DataLoader(object):
             return wp_ids, padded_masks
         padded_masks = []
         for m in masks:
+            m = {k:m[k] for k in sorted(m.keys())}
             tmp_mask = np.zeros((max_len,max_len))
-            for i, j in m:
-                tmp_mask[i,j] = 1
+            for k, v in m.items():
+                if type(v) is list:
+                    tmp_mask[k,v] = 1
+                else:
+                    assert type(v) is tuple, "ERROR: indexes of connected words must be represented in LIST or TUPLE."
+                    tmp_mask[k,v[0]:v[1]] = 1
             padded_masks.append(tmp_mask)
         padded_masks = torch.Tensor(padded_masks).int().to(self.device)
         return wp_ids, padded_masks
