@@ -49,8 +49,6 @@ class DataLoader(object):
 
         data = [data[i:i+args.batch_size] for i in range(0,len(data),args.batch_size)]
         self.data = data
-        with open("./loaded_train_data.pkl","wb") as f:
-            pickle.dump(data,f)
         logger.info(f"{tag}: {len(data)} batches generated.")
 
     def __len__(self):
@@ -88,6 +86,7 @@ class DataLoader(object):
         if not self.inference:
             batch_labels = mlb.fit_transform(batch_labels).astype(np.float32)
             encoding.update({"labels":torch.from_numpy(batch_labels).to(self.device)})
+        #print(encoding)
         return encoding
 
     def __iter__(self):

@@ -20,7 +20,7 @@ from loader import DataLoader
 from modeling import (evaluate,set_seed)
 
 logger = logging.getLogger(__name__)
-lr_to_str = {1e-5:"1e-05",2e-5:"2e-05",3e-5:"3e-05",5e-5:"5e-05",1e-4:"0.0001",} # sometimes under different systems 1e-4 is represented in different ways. 
+lr_to_str = {5e-6:"5e-06",8e-6:"8e-06",1e-5:"1e-05",2e-5:"2e-05",3e-5:"3e-05",4e-5:"4e-05",5e-5:"5e-05",1e-4:"0.0001",} # sometimes under different systems 1e-4 is represented in different ways. 
 
 def main():
     start_time = time.time()
@@ -45,8 +45,7 @@ def main():
         args.config_name_or_path = config_file_name
 
     # prepare model
-    config = BertConfig.from_pretrained(args.config_name_or_path,
-                                            num_labels=args.num_labels)
+    #config = BertConfig.from_pretrained(args.config_name_or_path,num_labels=args.num_labels)
 
     dev_dataloader = DataLoader(args,"dev",eval=True,inference=False)
     test_dataloader = DataLoader(args,"test",inference=True)
@@ -65,6 +64,8 @@ def main():
 
         ensemble_model_path = os.path.join(output_dir,f"ensemble_{ne}")
         assert os.path.exists(ensemble_model_path), "the selected model is untrained or trained incompletely."
+        
+        config = BertConfig.from_pretrained(ensemble_model_path,num_labels=args.num_labels)
         model = BertForSequenceClassification.from_pretrained(ensemble_model_path,config=config,output_loading_info=False,
                                                               model_type=args.model_type,num_syntax_layers=args.num_syntax_layers)
         if args.model_type == "with_const_tree":

@@ -64,6 +64,10 @@ def main():
         logger.info(f"<<<<<<<<<<  ensemble_{ne+1}  >>>>>>>>>>>")
         torch.cuda.empty_cache()
         
+        if args.model_type == "with_const_tree":
+            config = BertConfig.from_pretrained(args.config_name_or_path,
+                                                num_labels=args.num_labels)
+
         set_seed(args,ne)
         model = load_model(args.pretrained_model_path,args.bert_variant,config=config,output_loading_info=False,
                            model_type=args.model_type,num_syntax_layers=args.num_syntax_layers)
