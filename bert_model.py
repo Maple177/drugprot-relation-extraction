@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 class_weights = [1.358,45.340,98.397,2232.586,4980.385,66.610,28.814,48.717,46.985,12.023,73.158,70.375,32.324,2697.708] 
 
 class HighwayGateLayer(nn.Module):
-    def __init__(self, in_out_size, bias=True):
+    def __init__(self, dim, bias=True):
         super(HighwayGateLayer, self).__init__()
-        self.transform = nn.Linear(in_out_size, in_out_size, bias=bias)
+        self.transform = nn.Linear(dim, dim, bias=bias)
 
     def forward(self,v,z):
         # from sachan "do syntax trees help ...": equation (5)
@@ -71,9 +71,9 @@ class BertForSequenceClassification(BertPreTrainedModel):
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
-        assert self.model_type in ["no_syntax","no_syntax_extra","with_chunking","with_const_tree"], "UNAVAILABLE model type." + \
+        assert self.model_type in ["no_syntax","no_syntax_extra","with_chunking","with_const_tree","late_fusion"], "UNAVAILABLE model type." + \
                                    "Possible options: no_syntax / with_chunking / with_const_tree"
-        if model_type in ["no_syntax_extra","with_chunking"]:
+        if model_type in ["no_syntax_extra","with_chunking","late_fusion"]:
             self.extra_bert = BertEncoder(config,num_syntax_layers)
         if model_type in ["late fusion"]:
             self.highway = HighwayGateLayer(config.hidden_size)
@@ -115,6 +115,11 @@ class BertForSequenceClassification(BertPreTrainedModel):
         elif self.model_type == "no_syntax_extra":
             hidden_states = outputs[0]
             hidden_states = self.extra_bert(hidden_states,attention_mask=attention_mask[:,None,None,:])[0]
+            pooled_output = self.pooler(hidden_states)
+        elif self.model_type == "late_fusion":
+            hidden_states = outputs[0]
+            syn_hidden_states = self.extra_bert(hidden_states,attention_mask=attention_mask[:,None,:,:])[0]
+            hidden_states =self.highway(hidden_states,syn_hidden_states)
             pooled_output = self.pooler(hidden_states)
         elif self.model_type == "with_chunking":
             device = next(self.parameters()).device

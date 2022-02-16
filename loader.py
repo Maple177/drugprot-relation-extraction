@@ -1,4 +1,5 @@
 import os
+from tkinter import E
 import numpy as np
 import pandas as pd
 import pickle
@@ -17,7 +18,7 @@ class DataLoader(object):
         self.device = args.device
         self.model_type = args.model_type
 
-        assert self.model_type in ["no_syntax","no_syntax_extra","with_chunking","with_const_tree"], "UNAVAILABLE model type. Possible options: no_syntax / with_chunking / with_const_tree"
+        assert self.model_type in ["no_syntax","no_syntax_extra","with_chunking","with_const_tree","late_fusion"], "UNAVAILABLE model type. Possible options: no_syntax / with_chunking / with_const_tree"
 
         if self.model_type == "with_const_tree":
             data = pickle.load(open(os.path.join(args.data_dir,"const_tree",f"{tag}.pkl"),"rb"))
@@ -25,6 +26,13 @@ class DataLoader(object):
                 data = list(zip(data["wp_ids"],data["subtree_masks"],data["labels"]))
             else:
                 data = list(zip(data["wp_ids"],data["subtree_masks"]))
+
+        elif self.model_type == "late_fusion":
+            data = pickle.load(open(os.path.join(args.data_dir,"late_fusion",f"{tag}.pkl"),"rb"))
+            if not inference:
+                data = list(zip(data["wp_ids"],data["dep_graphs"],data["labels"]))
+            else:
+                data = list(zip(data["wp_ids"],data["dep_graphs"]))
         else:
             data = pickle.load(open(os.path.join(args.data_dir,"chunking",f"{tag}.pkl"),"rb"))
             if not inference:
@@ -82,16 +90,35 @@ class DataLoader(object):
                 batch_wp_ids, batch_subtree_masks, batch_labels = list(zip(*batch))
             batch_wp_ids, batch_subtree_masks = self._padding(batch_wp_ids,batch_subtree_masks)
             encoding = {"input_ids":batch_wp_ids,"attention_mask":batch_subtree_masks}
+        elif self.model_type == "late_fusion":
+            if self.inference:
+                batch_wp_ids, batch_dep_graphs = list(zip(*batch))
+            else:
+                batch_wp_ids, batch_dep_graphs, batch_labels = list(zip(*batch))
+            batch_wp_ids, batch_adj_mats = self._to_adj_mats(batch_wp_ids,batch_dep_graphs)
+            encoding = {"input_ids":batch_wp_ids,"attention_mask":batch_adj_mats}
 
         if not self.inference:
             batch_labels = mlb.fit_transform(batch_labels).astype(np.float32)
             encoding.update({"labels":torch.from_numpy(batch_labels).to(self.device)})
-        #print(encoding)
         return encoding
 
     def __iter__(self):
         for i in range(self.__len__()):
             yield self.__getitem__(i)
+
+    def _to_adj_mats(self,wp_ids,graphs):
+        max_len = max(map(len,wp_ids))
+        wp_ids = torch.Tensor([line + (max_len-len(line)) * [0] for line in wp_ids]).int().to(self.device)
+        adj_mats = []
+        for g in graphs:
+            # assure that each wordpiece attend to itself; it is not included in the preprocessed dependency graph
+            tmp_mat = np.eye(max_len)
+            for k, v in g.items():
+                tmp_mat[k,v] = 1
+            adj_mats.append(tmp_mat)
+        adj_mats = torch.Tensor(adj_mats).int().to(self.device)
+        return wp_ids, adj_mats
 
     def _padding(self,wp_ids,masks=[]):
         max_len = max(map(len,wp_ids))
