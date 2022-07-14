@@ -18,6 +18,7 @@ tar xzvf data.tgz
 rm data.tgz
 ```
 Make sure you have available GPU before training;
+Repliacate our experiments (BioBERT, CE-BioBERT, CT-BioBERT and MTS-BioBERT) using run.sh
 below we show example commands for training an ensemble containing 8 bioBERT model using batch size=16, maximum sequence length=256, and early stopping enabled:
 
 train (e.g. original bioBERT) 
